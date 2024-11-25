@@ -7,13 +7,13 @@ export interface SubMenuItem {
 
 export interface MenuItem {
   title: string
-  icon: LucideIcon
+  icon?: LucideIcon
   href?: string
-  submenu?: SubMenuItem[]
+  children?: MenuItem[]
+  expanded?: boolean
 }
 
 export interface NavigationProps {
   items: MenuItem[]
   userRole?: 'admin' | 'manager' | 'employee'
 }
-
