@@ -28,7 +28,6 @@ const navigationItems: MenuItem[] = [
     children: [
       { title: 'New Order', href: '/orders/new' },
       { title: 'Order List', href: '/orders' },
-      { title: 'Order Details', href: '/orders/details' },
     ],
   },
   {

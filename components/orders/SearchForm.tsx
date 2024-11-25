@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
@@ -9,18 +8,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DatePickerWithRange } from '@/components/ui/date-range-picker'
+import { DateRange } from 'react-day-picker'
 
 export interface SearchParams {
   poNumber?: string
   customerName?: string
-  dateRange?: {
-    from: Date
-    to: Date
-  }
+  dateRange?: DateRange
   status?: string
   amountRange?: {
-    min: number
-    max: number
+    min?: number
+    max?: number
   }
 }
 
@@ -28,13 +25,13 @@ const formSchema = z.object({
   poNumber: z.string().optional(),
   customerName: z.string().optional(),
   dateRange: z.object({
-    from: z.date().optional(),
-    to: z.date().optional(),
+    from: z.date(),
+    to: z.date(),
   }).optional(),
   status: z.string().optional(),
   amountRange: z.object({
-    min: z.number().min(0).optional(),
-    max: z.number().min(0).optional(),
+    min: z.number().min(0).optional().or(z.literal('')),
+    max: z.number().min(0).optional().or(z.literal('')),
   }).optional(),
 })
 
@@ -45,11 +42,32 @@ interface SearchFormProps {
 export function SearchForm({ onSearch }: SearchFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {},
+    defaultValues: {
+      poNumber: '',
+      customerName: '',
+      dateRange: undefined,
+      status: undefined,
+      amountRange: {
+        min: undefined,
+        max: undefined,
+      }
+    },
   })
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSearch(values)
+    const cleanedValues = {
+      ...values,
+      amountRange: values.amountRange ? {
+        min: values.amountRange.min === '' ? undefined : Number(values.amountRange.min),
+        max: values.amountRange.max === '' ? undefined : Number(values.amountRange.max),
+      } : undefined
+    }
+    onSearch(cleanedValues)
+  }
+
+  const handleReset = () => {
+    form.reset()
+    onSearch({})
   }
 
   return (
@@ -88,11 +106,7 @@ export function SearchForm({ onSearch }: SearchFormProps) {
                 <FormLabel>Date Range</FormLabel>
                 <DatePickerWithRange
                   selected={field.value}
-                  onSelect={(range) => {
-                    if (range?.from && range?.to) {
-                      field.onChange({ from: range.from, to: range.to })
-                    }
-                  }}
+                  onSelect={field.onChange}
                 />
               </FormItem>
             )}
@@ -103,10 +117,13 @@ export function SearchForm({ onSearch }: SearchFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select 
+                  onValueChange={field.onChange} 
+                  value={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -126,7 +143,15 @@ export function SearchForm({ onSearch }: SearchFormProps) {
               <FormItem>
                 <FormLabel>Min Amount</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Min Amount" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                  <Input 
+                    type="number" 
+                    placeholder="Min Amount" 
+                    {...field} 
+                    onChange={(e) => {
+                      const value = e.target.value
+                      field.onChange(value === '' ? '' : Number(value))
+                    }}
+                  />
                 </FormControl>
               </FormItem>
             )}
@@ -138,15 +163,25 @@ export function SearchForm({ onSearch }: SearchFormProps) {
               <FormItem>
                 <FormLabel>Max Amount</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Max Amount" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                  <Input 
+                    type="number" 
+                    placeholder="Max Amount" 
+                    {...field}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      field.onChange(value === '' ? '' : Number(value))
+                    }}
+                  />
                 </FormControl>
               </FormItem>
             )}
           />
         </div>
-        <Button type="submit">Search Orders</Button>
+        <div className="flex gap-2">
+          <Button type="submit">Search Orders</Button>
+          <Button type="button" variant="outline" onClick={handleReset}>Reset</Button>
+        </div>
       </form>
     </Form>
   )
 }
-
