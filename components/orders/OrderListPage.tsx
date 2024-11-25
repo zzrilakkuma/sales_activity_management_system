@@ -1,74 +1,56 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SearchForm, SearchParams } from '@/components/orders/SearchForm'
 import { OrderTable } from '@/components/orders/OrderTable'
 import { OrderListItem } from '@/types/orders'
 
-const sampleOrders: OrderListItem[] = [
-  {
-    id: 1,
-    poNumber: "PO-2024-001",
-    customerName: "Customer A",
-    orderDate: new Date("2024-01-01"),
-    totalAmount: 5000,
-    status: "Processing",
-    estimatedShipDate: new Date("2024-02-01")
-  },
-  {
-    id: 2,
-    poNumber: "PO-2024-002",
-    customerName: "Customer B",
-    orderDate: new Date("2024-01-15"),
-    totalAmount: 7500,
-    status: "Shipped",
-    estimatedShipDate: new Date("2024-02-15")
-  },
-  {
-    id: 3,
-    poNumber: "PO-2024-003",
-    customerName: "Customer C",
-    orderDate: new Date("2024-02-01"),
-    totalAmount: 3000,
-    status: "Pending",
-    estimatedShipDate: new Date("2024-03-01")
-  },
-  // Add more sample data as needed
-]
-
 export function OrderListPage() {
-  const [orders, setOrders] = useState<OrderListItem[]>(sampleOrders)
-  const [isLoading, setIsLoading] = useState(false)
+  const [orders, setOrders] = useState<OrderListItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSearch = (params: SearchParams) => {
+  // Fetch orders on component mount
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async (params?: SearchParams) => {
     setIsLoading(true)
     setError(null)
 
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        // Filter orders based on search params
-        const filteredOrders = sampleOrders.filter(order => {
-          if (params.poNumber && !order.poNumber.toLowerCase().includes(params.poNumber.toLowerCase())) return false
-          if (params.customerName && !order.customerName.toLowerCase().includes(params.customerName.toLowerCase())) return false
-          if (params.dateRange?.from && params.dateRange?.to) {
-            const orderDate = new Date(order.orderDate)
-            if (orderDate < params.dateRange.from || orderDate > params.dateRange.to) return false
-          }
-          if (params.status && order.status !== params.status) return false
-          if (params.amountRange?.min && order.totalAmount < params.amountRange.min) return false
-          if (params.amountRange?.max && order.totalAmount > params.amountRange.max) return false
-          return true
-        })
-
-        setOrders(filteredOrders)
-        setIsLoading(false)
-      } catch (err) {
-        setError('An error occurred while searching orders.')
-        setIsLoading(false)
+    try {
+      const searchParams = new URLSearchParams()
+      if (params) {
+        if (params.poNumber) searchParams.set('poNumber', params.poNumber)
+        if (params.customerName) searchParams.set('customerName', params.customerName)
+        if (params.status) searchParams.set('status', params.status)
+        if (params.dateRange?.from) searchParams.set('dateFrom', params.dateRange.from.toISOString())
+        if (params.dateRange?.to) searchParams.set('dateTo', params.dateRange.to.toISOString())
+        if (params.amountRange?.min) searchParams.set('amountMin', params.amountRange.min.toString())
+        if (params.amountRange?.max) searchParams.set('amountMax', params.amountRange.max.toString())
       }
-    }, 1000) // Simulate network delay
+
+      const response = await fetch(`/api/orders?${searchParams.toString()}`)
+      if (!response.ok) throw new Error('Failed to fetch orders')
+      
+      const data = await response.json()
+      setOrders(data.map((order: any) => ({
+        ...order,
+        customerName: order.customer.name,  // Add customer name for table display
+        orderDate: new Date(order.orderDate),
+        estimatedShipDate: order.estimatedShipDate ? new Date(order.estimatedShipDate) : null,
+      })))
+    } catch (err) {
+      setError('An error occurred while fetching orders.')
+      console.error('Error fetching orders:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSearch = (params: SearchParams) => {
+    fetchOrders(params)
   }
 
   return (
@@ -90,4 +72,3 @@ export function OrderListPage() {
     </div>
   )
 }
-

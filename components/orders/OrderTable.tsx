@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { OrderListItem } from '@/types/orders'
 import { OrderDetailsModal } from './OrderDetailsModal'
+import { format } from 'date-fns'
 
 interface OrderTableProps {
   orders: OrderListItem[]
@@ -29,7 +30,27 @@ interface OrderTableProps {
 
 export function OrderTable({ orders }: OrderTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [selectedOrder, setSelectedOrder] = useState<number | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<OrderListItem | null>(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'N/A'
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      return format(dateObj, 'PPP')
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return 'Invalid Date'
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
+    return formatted
+  }
 
   const columns: ColumnDef<OrderListItem>[] = [
     {
@@ -43,20 +64,14 @@ export function OrderTable({ orders }: OrderTableProps) {
     {
       accessorKey: 'orderDate',
       header: 'Order Date',
-      cell: ({ row }) => {
-        return new Date(row.getValue('orderDate')).toLocaleDateString()
-      },
+      cell: ({ row }) => formatDate(row.getValue('orderDate')),
     },
     {
       accessorKey: 'totalAmount',
       header: 'Total Amount',
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue('totalAmount'))
-        const formatted = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD',
-        }).format(amount)
-        return formatted
+        return formatCurrency(amount)
       },
     },
     {
@@ -78,9 +93,7 @@ export function OrderTable({ orders }: OrderTableProps) {
     {
       accessorKey: 'estimatedShipDate',
       header: 'Est. Ship Date',
-      cell: ({ row }) => {
-        return new Date(row.getValue('estimatedShipDate')).toLocaleDateString()
-      },
+      cell: ({ row }) => formatDate(row.getValue('estimatedShipDate')),
     },
     {
       id: 'actions',
@@ -88,9 +101,9 @@ export function OrderTable({ orders }: OrderTableProps) {
         const order = row.original
         return (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={() => setSelectedOrder(order.id)}
+            onClick={() => setSelectedOrder(order)}
           >
             View Details
           </Button>
@@ -176,9 +189,9 @@ export function OrderTable({ orders }: OrderTableProps) {
         </Button>
       </div>
       {selectedOrder && (
-        <OrderDetailsModal 
-          orderId={selectedOrder}
-          showModal={!!selectedOrder}
+        <OrderDetailsModal
+          order={selectedOrder}
+          isOpen={!!selectedOrder}
           onClose={() => setSelectedOrder(null)}
         />
       )}
