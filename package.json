@@ -10,7 +10,6 @@
     "seed": "npx ts-node -O '{\"module\":\"commonjs\"}' scripts/seed.ts"
   },
   "dependencies": {
-    "@auth/nextjs": "^0.0.0-380f8d56",
     "@hookform/resolvers": "^3.9.1",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-alert-dialog": "^1.1.2",
