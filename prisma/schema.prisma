@@ -1,24 +1,153 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  password      String
-  role          String    @default("SALES")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id            Int           @id @default(autoincrement())
+  username      String        @unique
+  email         String        @unique
+  passwordHash  String        @map("password_hash")
+  role          String
+  createdAt     DateTime      @default(now()) @map("created_at")
+  isActive      Boolean       @default(true) @map("is_active")
+  orders        Order[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model Customer {
+  id             Int      @id @default(autoincrement())
+  name           String
+  contactPerson  String   @map("contact_person")
+  email          String
+  phone          String
+  address        String
+  priceTerm      String   @map("price_term")
+  createdAt      DateTime @default(now()) @map("created_at")
+  orders         Order[]
+
+  @@map("customers")
+}
+
+model Product {
+  id            Int          @id @default(autoincrement())
+  model         String
+  asusPn        String       @map("asus_pn")
+  basePrice     Decimal      @map("base_price") @db.Decimal(10, 2)
+  minStockLevel Int          @map("min_stock_level")
+  description   String?
+  isActive      Boolean      @default(true) @map("is_active")
+  inventory     Inventory?
+  orderItems    OrderItem[]
+
+  @@map("products")
+}
+
+model Inventory {
+  id                Int          @id @default(autoincrement())
+  productId         Int          @unique @map("product_id")
+  totalQuantity     Int          @map("total_quantity")
+  allocatedQuantity Int          @map("allocated_quantity")
+  availableQuantity Int          @map("available_quantity")
+  lastUpdated       DateTime     @updatedAt @map("last_updated")
+  product          Product       @relation(fields: [productId], references: [id])
+  allocations      Allocation[]
+
+  @@map("inventory")
+}
+
+model Order {
+  id                Int          @id @default(autoincrement())
+  customerId        Int          @map("customer_id")
+  userId           Int          @map("user_id")
+  poNumber         String       @unique @map("po_number")
+  orderDate        DateTime     @default(now()) @map("order_date")
+  status           String
+  totalAmount      Decimal      @map("total_amount") @db.Decimal(10, 2)
+  shippingTerm     String       @map("shipping_term")
+  estimatedShipDate DateTime?   @map("estimated_ship_date")
+  actualShipDate   DateTime?    @map("actual_ship_date")
+  customer         Customer     @relation(fields: [customerId], references: [id])
+  user             User        @relation(fields: [userId], references: [id])
+  orderItems       OrderItem[]
+  shipments        Shipment[]
+  documents        Document[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               Int          @id @default(autoincrement())
+  orderId          Int          @map("order_id")
+  productId        Int          @map("product_id")
+  quantity         Int
+  unitPrice        Decimal      @map("unit_price") @db.Decimal(10, 2)
+  allocatedQuantity Int         @default(0) @map("allocated_quantity")
+  status           String
+  order            Order        @relation(fields: [orderId], references: [id])
+  product          Product      @relation(fields: [productId], references: [id])
+  allocations      Allocation[]
+
+  @@map("order_items")
+}
+
+model Allocation {
+  id                   Int       @id @default(autoincrement())
+  orderItemId          Int       @map("order_item_id")
+  inventoryId          Int       @map("inventory_id")
+  quantity             Int
+  allocationDate       DateTime  @default(now()) @map("allocation_date")
+  estimatedDeliveryDate DateTime @map("estimated_delivery_date")
+  status               String
+  orderItem            OrderItem @relation(fields: [orderItemId], references: [id])
+  inventory            Inventory @relation(fields: [inventoryId], references: [id])
+
+  @@map("allocations")
+}
+
+model Shipment {
+  id             Int       @id @default(autoincrement())
+  orderId        Int       @map("order_id")
+  etd            DateTime?
+  eta            DateTime?
+  trackingNumber String?   @map("tracking_number")
+  status         String
+  notes          String?
+  order          Order     @relation(fields: [orderId], references: [id])
+
+  @@map("shipments")
+}
+
+model Document {
+  id            Int      @id @default(autoincrement())
+  referenceType String   @map("reference_type")
+  referenceId   Int      @map("reference_id")
+  documentType  String   @map("document_type")
+  filePath      String   @map("file_path")
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+  order         Order?   @relation(fields: [referenceId], references: [id])
+
+  @@map("documents")
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  entityType  String   @map("entity_type")
+  entityId    Int      @map("entity_id")
+  userId      Int      @map("user_id")
+  action      String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
 }
