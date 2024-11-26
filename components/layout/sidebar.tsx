@@ -39,7 +39,6 @@ const navigationItems: MenuItem[] = [
     children: [
       { title: 'Stock Overview', href: '/inventory/stock' },
       { title: 'Allocation Status', href: '/inventory/allocation' },
-      { title: 'Delivery Tracking', href: '/inventory/delivery' },
     ],
   },
   {
@@ -74,14 +73,13 @@ interface SidebarProps {
 const Sidebar = ({ className, userRole = 'user' }: SidebarProps) => {
   const pathname = usePathname();
   const router = useRouter();
-  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
 
   const toggleItem = (title: string) => {
-    setOpenItems((prev) =>
-      prev.includes(title)
-        ? prev.filter((item) => item !== title)
-        : [...prev, title]
-    );
+    setOpenItems(prev => ({
+      ...prev,
+      [title]: !prev[title]
+    }));
   };
 
   const handleLogout = async () => {
@@ -92,7 +90,6 @@ const Sidebar = ({ className, userRole = 'user' }: SidebarProps) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Fallback redirect if signOut fails
       router.push('/login');
     }
   };
@@ -109,7 +106,6 @@ const Sidebar = ({ className, userRole = 'user' }: SidebarProps) => {
           {navigationItems.map(item => renderMenuItem(item))}
         </div>
       </div>
-      {/* Logout Button */}
       <div className="border-t border-gray-800 p-3">
         <Button
           variant="ghost"
@@ -122,49 +118,56 @@ const Sidebar = ({ className, userRole = 'user' }: SidebarProps) => {
       </div>
     </div>
   );
-};
 
-const renderMenuItem = (item: MenuItem, depth = 0) => {
-  const pathname = usePathname();
-  const isActive = item.href ? pathname === item.href : false;
-  const hasChildren = item.children && item.children.length > 0;
+  function renderMenuItem(item: MenuItem, depth = 0) {
+    const isExpanded = openItems[item.title] ?? false;
+    const hasChildren = item.children && item.children.length > 0;
+    const isActive = item.href ? pathname === item.href : false;
 
-  return (
-    <div key={item.title} className="px-3">
-      {item.href ? (
-        <Link
-          href={item.href}
-          className={cn(
-            'flex items-center py-2 px-4 text-sm font-medium rounded-md',
-            isActive
-              ? 'bg-gray-800 text-white'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-          )}
-        >
-          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
-          <span>{item.title}</span>
-        </Link>
-      ) : (
-        <div
-          className={cn(
-            'flex items-center py-2 px-4 text-sm font-medium text-gray-300 rounded-md',
-            'hover:bg-gray-800 hover:text-white cursor-pointer'
-          )}
-        >
-          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
-          <span>{item.title}</span>
-          {hasChildren && (
-            <ChevronRight className="ml-auto h-4 w-4" />
-          )}
-        </div>
-      )}
-      {hasChildren && (
-        <div className="ml-4 mt-1">
-          {item.children?.map(child => renderMenuItem(child, depth + 1))}
-        </div>
-      )}
-    </div>
-  );
+    return (
+      <div key={item.title} className="px-3">
+        {item.href ? (
+          <Link
+            href={item.href}
+            className={cn(
+              'flex items-center py-2 px-4 text-sm font-medium rounded-md',
+              isActive
+                ? 'bg-gray-800 text-white'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+            )}
+          >
+            {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+            <span>{item.title}</span>
+          </Link>
+        ) : (
+          <div
+            onClick={() => toggleItem(item.title)}
+            className={cn(
+              'flex items-center py-2 px-4 text-sm font-medium text-gray-300 rounded-md',
+              'hover:bg-gray-800 hover:text-white cursor-pointer'
+            )}
+          >
+            {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+            <span>{item.title}</span>
+            {hasChildren && (
+              <div className="ml-auto">
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {hasChildren && isExpanded && (
+          <div className="ml-4 mt-1 space-y-1">
+            {item.children?.map(child => renderMenuItem(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
 };
 
 export default Sidebar;
