@@ -1,126 +1,120 @@
 import { PrismaClient } from '@prisma/client'
-import { hash } from 'bcryptjs'
+import bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create a test user first
-  const hashedPassword = await hash('password123', 10)
-  const user = await prisma.user.create({
-    data: {
-      username: 'testuser',
-      email: 'test@example.com',
-      passwordHash: hashedPassword,
-      role: 'SALES',
-      isActive: true,
-    },
-  })
+  try {
+    // Clean up existing data
+    await prisma.allocation.deleteMany()
+    await prisma.orderItem.deleteMany()
+    await prisma.order.deleteMany()
+    await prisma.inventory.deleteMany()
+    await prisma.product.deleteMany()
+    await prisma.customer.deleteMany()
+    await prisma.user.deleteMany()
 
-  // Create customers
-  const customers = await Promise.all([
-    prisma.customer.create({
-      data: {
-        name: 'Tech Solutions Inc',
-        contactPerson: 'John Smith',
-        email: 'john@techsolutions.com',
-        phone: '886-2-12345678',
-        address: 'No. 1, Technology Road, Taipei',
-        priceTerm: 'NET 30',
-      },
-    }),
-    prisma.customer.create({
-      data: {
-        name: 'Digital Systems Co',
-        contactPerson: 'Mary Johnson',
-        email: 'mary@digitalsystems.com',
-        phone: '886-2-87654321',
-        address: 'No. 100, Innovation Street, New Taipei',
-        priceTerm: 'NET 45',
-      },
-    }),
-  ])
-
-  // Create products
-  const products = await Promise.all([
-    prisma.product.create({
+    // Create test product with inventory
+    const product = await prisma.product.create({
       data: {
         model: 'ROG Strix G15',
         asusPn: 'G513QR-HF010T',
-        basePrice: 1299.99,
-        minStockLevel: 50,
-        description: 'Gaming Laptop, AMD Ryzen 9, RTX 3070',
-        isActive: true,
-        inventory: {
-          create: {
-            totalQuantity: 100,
-            allocatedQuantity: 0,
-            availableQuantity: 100,
-          },
-        },
-      },
-    }),
-    prisma.product.create({
-      data: {
-        model: 'ZenBook Pro Duo',
-        asusPn: 'UX582LR-H2013R',
-        basePrice: 2499.99,
-        minStockLevel: 30,
-        description: 'Professional Laptop, Intel i9, RTX 3070',
+        basePrice: 1499.99,
+        minStockLevel: 10,
+        description: 'Gaming Laptop with RTX 3070',
         isActive: true,
         inventory: {
           create: {
             totalQuantity: 50,
-            allocatedQuantity: 0,
-            availableQuantity: 50,
+            allocatedQuantity: 10,
+            availableQuantity: 40,
           },
         },
       },
-    }),
-  ])
+      include: {
+        inventory: true,
+      },
+    })
 
-  // Create orders
-  const orders = await Promise.all([
-    prisma.order.create({
+    console.log('Created test product:', product)
+
+    if (!product.inventory) {
+      throw new Error('Failed to create inventory for product')
+    }
+
+    // Create test customer
+    const customer = await prisma.customer.create({
       data: {
-        customerId: customers[0].id,
-        userId: user.id,
-        poNumber: 'PO-2024-001',
-        status: 'Processing',
-        totalAmount: 12999.90,
-        shippingTerm: 'FOB',
-        estimatedShipDate: new Date('2024-02-01'),
-        orderItems: {
-          create: {
-            productId: products[0].id,
-            quantity: 10,
-            unitPrice: 1299.99,
-            status: 'Processing',
-          },
-        },
+        name: 'Tech Solutions Inc',
+        contactPerson: 'John Doe',
+        email: 'john.doe@techsolutions.com',
+        phone: '123-456-7890',
+        address: '123 Tech Street, Silicon Valley, CA',
+        priceTerm: 'NET30',
       },
-    }),
-    prisma.order.create({
+    })
+
+    console.log('Created test customer:', customer)
+
+    // Create test user
+    const user = await prisma.user.create({
       data: {
-        customerId: customers[1].id,
+        username: 'testuser',
+        email: 'test@example.com',
+        passwordHash: await bcrypt.hash('password123', 12),
+        role: 'SALES',
+        isActive: true,
+      },
+    })
+
+    console.log('Created test user:', user)
+
+    // Create test order
+    const order = await prisma.order.create({
+      data: {
+        customerId: customer.id,
         userId: user.id,
-        poNumber: 'PO-2024-002',
-        status: 'Pending',
-        totalAmount: 24999.90,
-        shippingTerm: 'CIF',
-        estimatedShipDate: new Date('2024-02-15'),
+        poNumber: 'PO-2023-001',
+        status: 'Processing',
+        totalAmount: 2999.98,
+        shippingTerm: 'FOB',
         orderItems: {
           create: {
-            productId: products[1].id,
-            quantity: 10,
-            unitPrice: 2499.99,
+            productId: product.id,
+            quantity: 2,
+            unitPrice: 1499.99,
             status: 'Pending',
           },
         },
       },
-    }),
-  ])
+      include: {
+        orderItems: true,
+      },
+    })
 
-  console.log('Seed data created successfully')
+    console.log('Created test order:', order)
+
+    if (!order.orderItems[0]) {
+      throw new Error('Failed to create order item')
+    }
+
+    // Create test allocation
+    const allocation = await prisma.allocation.create({
+      data: {
+        orderItemId: order.orderItems[0].id,
+        inventoryId: product.inventory.id,
+        quantity: 2,
+        status: 'Pending',
+        estimatedDeliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    })
+
+    console.log('Created test allocation:', allocation)
+    console.log('Seed completed successfully')
+  } catch (error) {
+    console.error('Error during seeding:', error)
+    throw error
+  }
 }
 
 main()
