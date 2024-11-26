@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import {
   Home,
@@ -13,8 +14,10 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import { MenuItem } from '@/types/navigation';
+import { Button } from '@/components/ui/button';
 
 const navigationItems: MenuItem[] = [
   {
@@ -68,91 +71,100 @@ interface SidebarProps {
   userRole?: string;
 }
 
-export default function Sidebar({ className, userRole = 'user' }: SidebarProps) {
+const Sidebar = ({ className, userRole = 'user' }: SidebarProps) => {
   const pathname = usePathname();
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const router = useRouter();
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
-  const toggleExpanded = (title: string) => {
-    setExpandedItems(prev => ({
-      ...prev,
-      [title]: !prev[title],
-    }));
-  };
-
-  const renderMenuItem = (item: MenuItem, depth = 0) => {
-    const isExpanded = expandedItems[item.title] ?? false;
-    const hasChildren = item.children && item.children.length > 0;
-    const isActive = item.href ? pathname === item.href : false;
-
-    return (
-      <div key={item.title} className="w-full">
-        {item.href ? (
-          <Link href={item.href}>
-            <div
-              className={cn(
-                'flex items-center w-full px-3 py-2 text-sm font-medium rounded-md cursor-pointer',
-                isActive
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                depth > 0 && 'ml-4'
-              )}
-            >
-              <div className="flex items-center flex-1">
-                {item.icon && <item.icon className="h-5 w-5 mr-2" />}
-                <span>{item.title}</span>
-              </div>
-            </div>
-          </Link>
-        ) : (
-          <div
-            className={cn(
-              'flex items-center w-full px-3 py-2 text-sm font-medium rounded-md cursor-pointer',
-              'text-gray-300 hover:bg-gray-700 hover:text-white',
-              depth > 0 && 'ml-4'
-            )}
-            onClick={() => {
-              if (hasChildren) {
-                toggleExpanded(item.title);
-              }
-            }}
-          >
-            <div className="flex items-center flex-1">
-              {item.icon && <item.icon className="h-5 w-5 mr-2" />}
-              <span>{item.title}</span>
-            </div>
-            {hasChildren && (
-              <div className="ml-auto">
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {hasChildren && isExpanded && (
-          <div className="mt-1 mb-1">
-            {item.children!.map(child => renderMenuItem(child, depth + 1))}
-          </div>
-        )}
-      </div>
+  const toggleItem = (title: string) => {
+    setOpenItems((prev) =>
+      prev.includes(title)
+        ? prev.filter((item) => item !== title)
+        : [...prev, title]
     );
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut({
+        redirect: true,
+        callbackUrl: '/login'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback redirect if signOut fails
+      router.push('/login');
+    }
+  };
+
   return (
-    <div
-      className={cn(
-        'flex flex-col w-64 bg-gray-900 text-white p-3 space-y-2',
-        className
-      )}
-    >
-      <div className="px-3 py-4">
-        <h2 className="text-xl font-bold">ASUS Sales</h2>
+    <div className={cn('flex h-full flex-col bg-gray-900 text-white', className)}>
+      <div className="flex-1">
+        <div className="px-3 py-4">
+          <h2 className="px-4 text-lg font-semibold tracking-tight">
+            ASUS Sales System
+          </h2>
+        </div>
+        <div className="space-y-1">
+          {navigationItems.map(item => renderMenuItem(item))}
+        </div>
       </div>
-      <nav className="flex-1 space-y-1">
-        {navigationItems.map(item => renderMenuItem(item))}
-      </nav>
+      {/* Logout Button */}
+      <div className="border-t border-gray-800 p-3">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-white hover:bg-gray-800 hover:text-white"
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Logout</span>
+        </Button>
+      </div>
     </div>
   );
-}
+};
+
+const renderMenuItem = (item: MenuItem, depth = 0) => {
+  const pathname = usePathname();
+  const isActive = item.href ? pathname === item.href : false;
+  const hasChildren = item.children && item.children.length > 0;
+
+  return (
+    <div key={item.title} className="px-3">
+      {item.href ? (
+        <Link
+          href={item.href}
+          className={cn(
+            'flex items-center py-2 px-4 text-sm font-medium rounded-md',
+            isActive
+              ? 'bg-gray-800 text-white'
+              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+          )}
+        >
+          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+          <span>{item.title}</span>
+        </Link>
+      ) : (
+        <div
+          className={cn(
+            'flex items-center py-2 px-4 text-sm font-medium text-gray-300 rounded-md',
+            'hover:bg-gray-800 hover:text-white cursor-pointer'
+          )}
+        >
+          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+          <span>{item.title}</span>
+          {hasChildren && (
+            <ChevronRight className="ml-auto h-4 w-4" />
+          )}
+        </div>
+      )}
+      {hasChildren && (
+        <div className="ml-4 mt-1">
+          {item.children?.map(child => renderMenuItem(child, depth + 1))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Sidebar;

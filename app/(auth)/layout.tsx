@@ -4,7 +4,7 @@ import { PropsWithChildren } from 'react';
 import { useSession } from "next-auth/react";
 import { usePathname } from 'next/navigation';
 import { redirect } from 'next/navigation';
-import SidebarNavigation from '@/components/layout/sidebar';
+import Sidebar from '@/components/layout/sidebar';
 
 export default function AuthLayout({ children }: PropsWithChildren) {
   const { data: session, status } = useSession();
@@ -22,7 +22,7 @@ export default function AuthLayout({ children }: PropsWithChildren) {
   return (
     <div className="flex h-screen">
       {session && !isLoginPage && (
-        <SidebarNavigation userRole="admin" />
+        <Sidebar userRole={session?.user?.role} />
       )}
       <main className={`flex-1 overflow-y-auto ${session && !isLoginPage ? 'p-8' : ''}`}>
         {children}
