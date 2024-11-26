@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -14,50 +14,8 @@ async function main() {
     await prisma.customer.deleteMany()
     await prisma.user.deleteMany()
 
-    // Create test product with inventory
-    const product = await prisma.product.create({
-      data: {
-        model: 'ROG Strix G15',
-        asusPn: 'G513QR-HF010T',
-        basePrice: 1499.99,
-        minStockLevel: 10,
-        description: 'Gaming Laptop with RTX 3070',
-        isActive: true,
-        inventory: {
-          create: {
-            totalQuantity: 50,
-            allocatedQuantity: 10,
-            availableQuantity: 40,
-          },
-        },
-      },
-      include: {
-        inventory: true,
-      },
-    })
-
-    console.log('Created test product:', product)
-
-    if (!product.inventory) {
-      throw new Error('Failed to create inventory for product')
-    }
-
-    // Create test customer
-    const customer = await prisma.customer.create({
-      data: {
-        name: 'Tech Solutions Inc',
-        contactPerson: 'John Doe',
-        email: 'john.doe@techsolutions.com',
-        phone: '123-456-7890',
-        address: '123 Tech Street, Silicon Valley, CA',
-        priceTerm: 'NET30',
-      },
-    })
-
-    console.log('Created test customer:', customer)
-
-    // Create test user
-    const user = await prisma.user.create({
+    // Create test user (preserve original)
+    const testUser = await prisma.user.create({
       data: {
         username: 'testuser',
         email: 'test@example.com',
@@ -67,50 +25,189 @@ async function main() {
       },
     })
 
-    console.log('Created test user:', user)
+    // Create customers from Excel
+    const customers = await Promise.all([
+      prisma.customer.create({
+        data: {
+          name: 'Bicker',
+          contactPerson: 'Bicker Contact',
+          email: 'contact@bicker.com',
+          phone: '123-456-7890',
+          address: 'Bicker Address',
+          priceTerm: 'NET30',
+        },
+      }),
+      prisma.customer.create({
+        data: {
+          name: 'Rutronik',
+          contactPerson: 'Rutronik Contact',
+          email: 'contact@rutronik.com',
+          phone: '123-456-7891',
+          address: 'Rutronik Address',
+          priceTerm: 'NET30',
+        },
+      }),
+      prisma.customer.create({
+        data: {
+          name: 'next system',
+          contactPerson: 'Next System Contact',
+          email: 'contact@nextsystem.com',
+          phone: '123-456-7892',
+          address: 'Next System Address',
+          priceTerm: 'NET30',
+        },
+      }),
+      prisma.customer.create({
+        data: {
+          name: 'Portwell',
+          contactPerson: 'Portwell Contact',
+          email: 'contact@portwell.com',
+          phone: '123-456-7893',
+          address: 'Portwell Address',
+          priceTerm: 'NET30',
+        },
+      }),
+    ])
 
-    // Create test order
-    const order = await prisma.order.create({
-      data: {
-        customerId: customer.id,
-        userId: user.id,
-        poNumber: 'PO-2023-001',
-        status: 'Processing',
-        totalAmount: 2999.98,
-        shippingTerm: 'FOB',
-        orderItems: {
-          create: {
-            productId: product.id,
-            quantity: 2,
-            unitPrice: 1499.99,
-            status: 'Pending',
+    // Create products with inventory from Excel
+    const products = await Promise.all([
+      prisma.product.create({
+        data: {
+          model: 'Q470EI-IM-A R2.0',
+          asusPn: '90ME0520-M0ECY0',
+          basePrice: 299.99,
+          minStockLevel: 100,
+          description: 'Q470 Motherboard',
+          isActive: true,
+          inventory: {
+            create: {
+              totalQuantity: 470,
+              allocatedQuantity: 470,
+              availableQuantity: 0,
+            },
           },
         },
-      },
-      include: {
-        orderItems: true,
-      },
-    })
+        include: {
+          inventory: true,
+        },
+      }),
+      prisma.product.create({
+        data: {
+          model: 'J3455T-IM-A',
+          asusPn: '90ME0420-M0ECY0',
+          basePrice: 199.99,
+          minStockLevel: 50,
+          description: 'J3455T Motherboard',
+          isActive: true,
+          inventory: {
+            create: {
+              totalQuantity: 400,
+              allocatedQuantity: 120,
+              availableQuantity: 280,
+            },
+          },
+        },
+        include: {
+          inventory: true,
+        },
+      }),
+      prisma.product.create({
+        data: {
+          model: 'W480EI-IM-A',
+          asusPn: '90ME0530-M0ECY0',
+          basePrice: 349.99,
+          minStockLevel: 100,
+          description: 'W480 Motherboard',
+          isActive: true,
+          inventory: {
+            create: {
+              totalQuantity: 190,
+              allocatedQuantity: 190,
+              availableQuantity: 0,
+            },
+          },
+        },
+        include: {
+          inventory: true,
+        },
+      }),
+    ])
 
-    console.log('Created test order:', order)
+    // Create orders and order items from Excel
+    const orders = await Promise.all([
+      // Bicker Q470EI order
+      prisma.order.create({
+        data: {
+          customerId: customers[0].id,
+          userId: testUser.id,
+          poNumber: '2022-33031',
+          orderDate: new Date('2021-09-15'),
+          status: 'Allocated',
+          totalAmount: 80997.30,
+          shippingTerm: 'FOB',
+          estimatedShipDate: new Date('2021-10-06'),
+          orderItems: {
+            create: {
+              productId: products[0].id,
+              quantity: 270,
+              unitPrice: 299.99,
+              status: 'Allocated',
+              allocatedQuantity: 270,
+            },
+          },
+        },
+        include: {
+          orderItems: true,
+        },
+      }),
+      // Rutronik J3455T order
+      prisma.order.create({
+        data: {
+          customerId: customers[1].id,
+          userId: testUser.id,
+          poNumber: '22177611',
+          orderDate: new Date('2021-09-16'),
+          status: 'Allocated',
+          totalAmount: 3999.80,
+          shippingTerm: 'FOB',
+          orderItems: {
+            create: {
+              productId: products[1].id,
+              quantity: 20,
+              unitPrice: 199.99,
+              status: 'Allocated',
+              allocatedQuantity: 20,
+            },
+          },
+        },
+        include: {
+          orderItems: true,
+        },
+      }),
+    ])
 
-    if (!order.orderItems[0]) {
-      throw new Error('Failed to create order item')
+    // Create allocations for each order
+    for (const order of orders) {
+      if (order.orderItems && order.orderItems[0]) {
+        const orderItem = order.orderItems[0]
+        const product = products.find(p => p.id === orderItem.productId)
+        
+        if (product && product.inventory) {
+          await prisma.allocation.create({
+            data: {
+              orderItemId: orderItem.id,
+              inventoryId: product.inventory.id,
+              quantity: orderItem.quantity,
+              status: 'Allocated',
+              estimatedDeliveryDate: new Date('2021-10-30'),
+            },
+          })
+        }
+      }
     }
 
-    // Create test allocation
-    const allocation = await prisma.allocation.create({
-      data: {
-        orderItemId: order.orderItems[0].id,
-        inventoryId: product.inventory.id,
-        quantity: 2,
-        status: 'Pending',
-        estimatedDeliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
-
-    console.log('Created test allocation:', allocation)
     console.log('Seed completed successfully')
+    
   } catch (error) {
     console.error('Error during seeding:', error)
     throw error
