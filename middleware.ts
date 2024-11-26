@@ -5,22 +5,29 @@ import { hasPermission, Permission } from '@/types/auth'
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
+    const path = req.nextUrl.pathname
     
-    // Public routes
-    if (req.nextUrl.pathname === '/') {
+    // Allow access to login page
+    if (path === '/login') {
+      // If user is already logged in, redirect to dashboard
+      if (token) {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+      return NextResponse.next()
+    }
+
+    // Allow access to root page
+    if (path === '/') {
       return NextResponse.next()
     }
 
     // Check if user is authenticated
     if (!token) {
-      return NextResponse.redirect(new URL('/', req.url))
+      return NextResponse.redirect(new URL('/login', req.url))
     }
 
-    // Role-based access control
+    // Role-based access control for protected routes
     const userRole = token.role as string
-    const path = req.nextUrl.pathname
-
-    // Define route permissions
     const routePermissions: Record<string, Permission> = {
       '/inventory': 'read',
       '/inventory/stock': 'read',
@@ -31,7 +38,6 @@ export default withAuth(
 
     const requiredPermission = routePermissions[path]
     if (requiredPermission && !hasPermission(userRole, requiredPermission)) {
-      // Redirect to dashboard if user doesn't have permission
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
@@ -39,12 +45,11 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => true, // Let the middleware handle the auth check
     },
   }
 )
 
-// Protect all routes under /api and /(auth)
 export const config = {
-  matcher: ['/api/:path*', '/(auth)/:path*'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)', '/api/:path*']
 }
