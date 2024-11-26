@@ -71,11 +71,13 @@ model Order {
   userId           Int          @map("user_id")
   poNumber         String       @unique @map("po_number")
   orderDate        DateTime     @default(now()) @map("order_date")
-  status           String
+  tracking_status  String[]    @default(["ALLOCATION_TRACKING"]) // ["ETD_TRACKING", "MAIL_TRACKING", "ALLOCATION_TRACKING"]
+  allocation_status String     @default("PENDING") // PENDING/CHECKING/CHECKED/PARTIALLY/FULLY/CANCELLED
   totalAmount      Decimal      @map("total_amount") @db.Decimal(10, 2)
   shippingTerm     String       @map("shipping_term")
   estimatedShipDate DateTime?   @map("estimated_ship_date")
   actualShipDate   DateTime?    @map("actual_ship_date")
+  notes           String?      // 整張訂單的備註
   customer         Customer     @relation(fields: [customerId], references: [id])
   user             User        @relation(fields: [userId], references: [id])
   orderItems       OrderItem[]
@@ -92,7 +94,8 @@ model OrderItem {
   quantity         Int
   unitPrice        Decimal      @map("unit_price") @db.Decimal(10, 2)
   allocatedQuantity Int         @default(0) @map("allocated_quantity")
-  status           String
+  status          String      @default("PENDING") // PENDING/CHECKED/ALLOCATED
+  notes           String?     // 單項商品的備註
   order            Order        @relation(fields: [orderId], references: [id])
   product          Product      @relation(fields: [productId], references: [id])
   allocations      Allocation[]

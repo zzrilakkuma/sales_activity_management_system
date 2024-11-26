@@ -38,8 +38,8 @@ interface OrderDetails {
     unitPrice: number
     product: {
       id: number
-      name: string
-      sku: string
+      model: string
+      asusPn: string
       description: string | null
     }
   }[]
@@ -165,6 +165,8 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>ASUS P/N</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Unit Price</TableHead>
                       <TableHead>Subtotal</TableHead>
@@ -173,7 +175,9 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                   <TableBody>
                     {order.orderItems?.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.product?.name || 'N/A'}</TableCell>
+                        <TableCell>{item.product?.description || 'N/A'}</TableCell>
+                        <TableCell>{item.product?.model || 'N/A'}</TableCell>
+                        <TableCell>{item.product?.asusPn || 'N/A'}</TableCell>
                         <TableCell>{item.quantity || 0}</TableCell>
                         <TableCell>{formatCurrency(item.unitPrice || 0)}</TableCell>
                         <TableCell>{formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}</TableCell>
@@ -181,7 +185,7 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                     ))}
                     {(!order.orderItems || order.orderItems.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center">No items found</TableCell>
+                        <TableCell colSpan={6} className="text-center">No items found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -201,18 +205,16 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                     <p>{order.shipments?.[0]?.trackingNumber || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="font-semibold">Estimated Delivery Date:</p>
-                    <p>{order.shipments?.[0]?.estimatedDeliveryDate ? 
-                      formatDate(order.shipments[0].estimatedDeliveryDate) : 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold">Actual Delivery Date:</p>
-                    <p>{order.shipments?.[0]?.actualDeliveryDate ? 
-                      formatDate(order.shipments[0].actualDeliveryDate) : 'N/A'}</p>
-                  </div>
-                  <div>
                     <p className="font-semibold">Status:</p>
                     <Badge variant="outline">{order.shipments?.[0]?.status || 'N/A'}</Badge>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Estimated Delivery:</p>
+                    <p>{formatDate(order.shipments?.[0]?.estimatedDeliveryDate)}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Actual Delivery:</p>
+                    <p>{formatDate(order.shipments?.[0]?.actualDeliveryDate)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -223,3 +225,5 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
     </Dialog>
   )
 }
+
+export default OrderDetailsModal
