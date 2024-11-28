@@ -14,12 +14,28 @@ export interface SearchParams {
   poNumber?: string
   customerName?: string
   dateRange?: DateRange
-  status?: string
+  allocation_status?: string
+  tracking_status?: string
   amountRange?: {
     min?: number
     max?: number
   }
 }
+
+const ALLOCATION_STATUSES = [
+  'PENDING',
+  'CHECKING',
+  'CHECKED',
+  'PARTIALLY',
+  'FULLY',
+  'CANCELLED'
+] as const
+
+const TRACKING_STATUSES = [
+  'ETD_TRACKING',
+  'MAIL_TRACKING',
+  'ALLOCATION_TRACKING'
+] as const
 
 const formSchema = z.object({
   poNumber: z.string().optional(),
@@ -28,7 +44,8 @@ const formSchema = z.object({
     from: z.date(),
     to: z.date(),
   }).optional(),
-  status: z.string().optional(),
+  allocation_status: z.enum(['ALL', ...ALLOCATION_STATUSES]).optional(),
+  tracking_status: z.enum(['ALL', ...TRACKING_STATUSES]).optional(),
   amountRange: z.object({
     min: z.number().min(0).optional().or(z.literal('')),
     max: z.number().min(0).optional().or(z.literal('')),
@@ -46,7 +63,8 @@ export function SearchForm({ onSearch }: SearchFormProps) {
       poNumber: '',
       customerName: '',
       dateRange: undefined,
-      status: undefined,
+      allocation_status: 'ALL',
+      tracking_status: 'ALL',
       amountRange: {
         min: undefined,
         max: undefined,
@@ -57,6 +75,8 @@ export function SearchForm({ onSearch }: SearchFormProps) {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const cleanedValues = {
       ...values,
+      allocation_status: values.allocation_status === 'ALL' ? undefined : values.allocation_status,
+      tracking_status: values.tracking_status === 'ALL' ? undefined : values.tracking_status,
       amountRange: values.amountRange ? {
         min: values.amountRange.min === '' ? undefined : Number(values.amountRange.min),
         max: values.amountRange.max === '' ? undefined : Number(values.amountRange.max),
@@ -113,24 +133,53 @@ export function SearchForm({ onSearch }: SearchFormProps) {
           />
           <FormField
             control={form.control}
-            name="status"
+            name="allocation_status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
+                <FormLabel>Allocation Status</FormLabel>
                 <Select 
                   onValueChange={field.onChange} 
-                  value={field.value}
+                  defaultValue={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="All statuses" />
+                      <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Processing">Processing</SelectItem>
-                    <SelectItem value="Shipped">Shipped</SelectItem>
-                    <SelectItem value="Delivered">Delivered</SelectItem>
-                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    <SelectItem value="ALL">All Statuses</SelectItem>
+                    {ALLOCATION_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="tracking_status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tracking Status</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Statuses</SelectItem>
+                    {TRACKING_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status.replace('_TRACKING', '')}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </FormItem>

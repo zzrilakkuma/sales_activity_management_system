@@ -8,27 +8,42 @@ export interface OrderListItem {
     email: string
     phone: string
     address: string
+    contactPerson: string
+    priceTerm: string
   }
   orderDate: Date
   totalAmount: number
-  status: string
+  tracking_status: string[]  // ["ETD_TRACKING", "MAIL_TRACKING", "ALLOCATION_TRACKING"]
+  allocation_status: string  // PENDING/CHECKING/CHECKED/PARTIALLY/FULLY/CANCELLED
+  shippingTerm: string
   estimatedShipDate: Date | null
+  actualShipDate: Date | null
+  notes: string | null
   orderItems: {
     id: number
     quantity: number
     unitPrice: number
+    status: string  // PENDING/CHECKED/ALLOCATED
+    allocatedQuantity: number
     product: {
       id: number
-      name: string
-      sku: string
+      model: string
+      asusPn: string
       description: string | null
+      basePrice: number
     }
   }[]
   shipments: {
     id: number
-    trackingNumber: string
+    trackingNumber: string | null
     status: string
-    estimatedDeliveryDate: Date
+    estimatedDeliveryDate: Date | null
     actualDeliveryDate: Date | null
+    notes: string | null
   }[]
+  user: {
+    id: number
+    username: string
+    email: string
+  }
 }
