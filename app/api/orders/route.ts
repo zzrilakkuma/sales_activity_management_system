@@ -10,43 +10,50 @@ export async function GET(request: Request) {
     const where: Prisma.OrderWhereInput = {}
     
     // Apply filters
-    if (searchParams.has('poNumber')) {
+    const poNumber = searchParams.get('poNumber')
+    if (poNumber) {
       where.poNumber = {
-        contains: searchParams.get('poNumber'),
+        contains: poNumber,
         mode: 'insensitive',
       }
     }
     
-    if (searchParams.has('customerName')) {
+    const customerName = searchParams.get('customerName')
+    if (customerName) {
       where.customer = {
         name: {
-          contains: searchParams.get('customerName'),
+          contains: customerName,
           mode: 'insensitive',
         }
       }
     }
     
-    if (searchParams.has('allocation_status')) {
-      where.allocation_status = searchParams.get('allocation_status')
+    const status = searchParams.get('allocation_status')
+    if (status) {
+      where.allocation_status = status
     }
     
-    if (searchParams.has('dateFrom') || searchParams.has('dateTo')) {
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
+    if (dateFrom || dateTo) {
       where.orderDate = {}
-      if (searchParams.has('dateFrom')) {
-        where.orderDate.gte = new Date(searchParams.get('dateFrom')!)
+      if (dateFrom) {
+        where.orderDate.gte = new Date(dateFrom)
       }
-      if (searchParams.has('dateTo')) {
-        where.orderDate.lte = new Date(searchParams.get('dateTo')!)
+      if (dateTo) {
+        where.orderDate.lte = new Date(dateTo)
       }
     }
     
-    if (searchParams.has('amountMin') || searchParams.has('amountMax')) {
+    const amountMin = searchParams.get('amountMin')
+    const amountMax = searchParams.get('amountMax')
+    if (amountMin || amountMax) {
       where.totalAmount = {}
-      if (searchParams.has('amountMin')) {
-        where.totalAmount.gte = new Prisma.Decimal(searchParams.get('amountMin')!)
+      if (amountMin) {
+        where.totalAmount.gte = new Prisma.Decimal(amountMin)
       }
-      if (searchParams.has('amountMax')) {
-        where.totalAmount.lte = new Prisma.Decimal(searchParams.get('amountMax')!)
+      if (amountMax) {
+        where.totalAmount.lte = new Prisma.Decimal(amountMax)
       }
     }
 
