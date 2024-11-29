@@ -276,7 +276,11 @@ export default function NewOrderPage() {
       }, 5000)
     } catch (error) {
       console.error('Error creating order:', error)
-      setError(error.message)
+      if (error instanceof Error) {
+        setError(error.message)
+      } else {
+        setError('An unexpected error occurred')
+      }
       // Scroll to top to show error message
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
