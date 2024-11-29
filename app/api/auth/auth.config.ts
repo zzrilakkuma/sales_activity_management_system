@@ -39,6 +39,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id.toString(),
           email: user.email,
           role: role,
+          name: user.username // 添加 name 字段
         };
       }
     })
@@ -51,12 +52,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.name = user.name; // 添加 name 字段
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.role = token.role as string;
+        session.user.role = token.role;
+        session.user.name = token.name; // 確保 name 也被傳遞
       }
       return session;
     }
