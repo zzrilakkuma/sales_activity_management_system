@@ -99,7 +99,7 @@ const columns: ColumnDef<typeof data[0]>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       return (
-        <Badge variant={status === "Completed" ? "success" : "warning"}>
+        <Badge variant={status === "Completed" ? "default" : "secondary"}>
           {status}
         </Badge>
       )
