@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
+
+// 定義 lowStockProduct 的類型
+interface LowStockProduct {
+  id: string;
+  model: string;
+  asusPn: string;
+  minStockLevel: string;
+  availableQuantity: string;
+  allocatedQuantity: string;
+}
 
 export async function GET() {
   try {
@@ -74,7 +85,7 @@ export async function GET() {
     }))
 
     // Fetch low stock products
-    const lowStockProducts = await prisma.$queryRaw`
+    const lowStockProducts = await prisma.$queryRaw<LowStockProduct[]>`
       SELECT 
         p.id,
         p.model,
