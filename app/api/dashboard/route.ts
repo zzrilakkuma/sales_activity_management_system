@@ -1,157 +1,227 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
-    // Get current date for MTD/YTD calculations
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfYear = new Date(now.getFullYear(), 0, 1)
 
-    // Fetch KPIs
-    const [
-      mtdOrders,
-      ytdOrders,
-      pendingAllocations,
-      pendingShipments,
-      orderStatusDistribution,
-      trackingStatusDistribution,
-      recentActivities
-    ] = await Promise.all([
-      // MTD Orders Total
+    // Fetch KPI data
+    const [mtdOrders, ytdOrders, lastMonthOrders] = await Promise.all([
       prisma.order.aggregate({
         where: {
           orderDate: {
-            gte: startOfMonth
-          }
+            gte: startOfMonth,
+          },
         },
         _sum: {
-          totalAmount: true
-        }
+          totalAmount: true,
+        },
       }),
-
-      // YTD Orders Total
       prisma.order.aggregate({
         where: {
           orderDate: {
-            gte: startOfYear
-          }
+            gte: startOfYear,
+          },
         },
         _sum: {
-          totalAmount: true
-        }
+          totalAmount: true,
+        },
       }),
+      prisma.order.aggregate({
+        where: {
+          orderDate: {
+            gte: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+            lt: startOfMonth,
+          },
+        },
+        _sum: {
+          totalAmount: true,
+        },
+      }),
+    ])
 
-      // Pending Allocations Count
+    // Calculate trend
+    const currentMonthTotal = mtdOrders._sum.totalAmount?.toNumber() || 0
+    const lastMonthTotal = lastMonthOrders._sum.totalAmount?.toNumber() || 0
+    const trend = lastMonthTotal === 0 ? 0 : ((currentMonthTotal - lastMonthTotal) / lastMonthTotal) * 100
+
+    // Fetch order status distribution
+    const orderStatusDistribution = await prisma.order.groupBy({
+      by: ['allocation_status'],
+      _count: true,
+    })
+
+    // Fetch tracking status distribution
+    const orders = await prisma.order.findMany({
+      select: {
+        tracking_status: true,
+      },
+    })
+
+    // Process tracking statuses (since it's an array)
+    const trackingStatusCounts: { [key: string]: number } = {}
+    orders.forEach(order => {
+      order.tracking_status.forEach(status => {
+        trackingStatusCounts[status] = (trackingStatusCounts[status] || 0) + 1
+      })
+    })
+
+    const trackingStatusDistribution = Object.entries(trackingStatusCounts).map(([status, count]) => ({
+      status,
+      count,
+    }))
+
+    // Fetch low stock products
+    const lowStockProducts = await prisma.$queryRaw`
+      SELECT 
+        p.id,
+        p.model,
+        p.asus_pn as "asusPn",
+        p.min_stock_level as "minStockLevel",
+        i.available_quantity as "availableQuantity",
+        i.allocated_quantity as "allocatedQuantity"
+      FROM products p
+      JOIN inventory i ON i.product_id = p.id
+      WHERE i.available_quantity <= p.min_stock_level
+        AND p.min_stock_level > 0
+      ORDER BY i.available_quantity ASC
+      LIMIT 5
+    `
+
+    // Fetch recent orders
+    const recentOrders = await prisma.order.findMany({
+      select: {
+        id: true,
+        poNumber: true,
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+        orderDate: true,
+        totalAmount: true,
+        allocation_status: true,
+      },
+      orderBy: {
+        orderDate: 'desc',
+      },
+      take: 5,
+    })
+
+    // Fetch top customers
+    const topCustomers = await prisma.customer.findMany({
+      include: {
+        orders: {
+          select: {
+            totalAmount: true,
+          },
+        },
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
+      orderBy: {
+        orders: {
+          _count: 'desc',
+        },
+      },
+      take: 5,
+    })
+
+    // Fetch recent activities
+    const recentActivities = await prisma.order.findMany({
+      select: {
+        id: true,
+        poNumber: true,
+        orderDate: true,
+        allocation_status: true,
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        orderDate: 'desc',
+      },
+      take: 10,
+    })
+
+    // Calculate pending allocations and shipments
+    const [pendingAllocations, pendingShipments] = await Promise.all([
       prisma.order.count({
         where: {
-          allocation_status: 'PENDING'
-        }
+          allocation_status: {
+            in: ['PENDING', 'PARTIALLY'],
+          },
+        },
       }),
-
-      // Pending Shipments Count
       prisma.order.count({
         where: {
           allocation_status: 'FULLY',
-          actualShipDate: null
-        }
-      }),
-
-      // Order Status Distribution
-      prisma.order.groupBy({
-        by: ['allocation_status'],
-        _count: true
-      }),
-
-      // Tracking Status Distribution
-      prisma.order.groupBy({
-        by: ['tracking_status'],
-        _count: true
-      }),
-
-      // Recent Activities
-      prisma.order.findMany({
-        orderBy: {
-          orderDate: 'desc'
+          actualShipDate: null,
         },
-        take: 10,
-        select: {
-          id: true,
-          poNumber: true,
-          orderDate: true,
-          allocation_status: true,
-          tracking_status: true,
-          customer: {
-            select: {
-              name: true
-            }
-          }
-        }
-      })
+      }),
     ])
 
-    // Calculate trend (comparing current month to previous month)
-    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const previousMonthOrders = await prisma.order.aggregate({
-      where: {
-        orderDate: {
-          gte: previousMonth,
-          lt: startOfMonth
-        }
-      },
-      _sum: {
-        totalAmount: true
-      }
-    })
-
-    const currentMonthTotal = mtdOrders._sum.totalAmount?.toNumber() || 0
-    const previousMonthTotal = previousMonthOrders._sum.totalAmount?.toNumber() || 0
-    const trend = previousMonthTotal === 0 ? 0 : 
-      ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
-
-    // Process tracking status data (flatten array values)
-    const flattenedTrackingStatus = trackingStatusDistribution.reduce((acc, curr) => {
-      curr.tracking_status.forEach(status => {
-        const existingStatus = acc.find(item => item.status === status)
-        if (existingStatus) {
-          existingStatus.count += curr._count
-        } else {
-          acc.push({ status, count: curr._count })
-        }
-      })
-      return acc
-    }, [] as { status: string; count: number }[])
-
-    // Format the response
     return NextResponse.json({
       kpi: {
         totalOrdersValue: {
           mtd: mtdOrders._sum.totalAmount?.toNumber() || 0,
           ytd: ytdOrders._sum.totalAmount?.toNumber() || 0,
-          trend: Math.round(trend * 100) / 100
+          trend,
         },
         pendingAllocations,
-        pendingShipments
+        pendingShipments,
       },
-      orderStatusDistribution: orderStatusDistribution.map(status => ({
-        status: status.allocation_status,
-        count: status._count
+      orderStatusDistribution: orderStatusDistribution.map((item) => ({
+        status: item.allocation_status,
+        count: item._count,
       })),
-      trackingStatusDistribution: flattenedTrackingStatus,
+      trackingStatusDistribution,
+      lowStockProducts: lowStockProducts.map(product => ({
+        id: Number(product.id),
+        model: product.model,
+        asusPn: product.asusPn,
+        currentStock: Number(product.availableQuantity),
+        minStockLevel: Number(product.minStockLevel),
+        allocatedQuantity: Number(product.allocatedQuantity),
+      })),
+      recentOrders: recentOrders.map((order) => ({
+        id: order.id,
+        poNumber: order.poNumber,
+        customerName: order.customer.name,
+        orderDate: order.orderDate.toISOString(),
+        totalAmount: order.totalAmount.toNumber(),
+        status: order.allocation_status,
+      })),
+      topCustomers: topCustomers.map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        ordersCount: customer._count.orders,
+        totalAmount: customer.orders.reduce((sum, order) => 
+          sum + (order.totalAmount?.toNumber() || 0), 0
+        ),
+      })),
       recentActivities: recentActivities.map(activity => ({
         id: activity.id,
-        description: `${activity.customer.name} - ${activity.poNumber} (${activity.allocation_status})`,
+        description: `${activity.customer.name} - ${activity.poNumber}`,
         timestamp: activity.orderDate.toISOString(),
         status: activity.allocation_status === 'PENDING' ? 'warning' :
                activity.allocation_status === 'CANCELLED' ? 'error' : 'info'
-      }))
+      })),
     })
-
   } catch (error) {
-    console.error('Dashboard data fetch error:', error)
+    console.error('Dashboard API Error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard data' },
+      { 
+        error: 'Failed to fetch dashboard data',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

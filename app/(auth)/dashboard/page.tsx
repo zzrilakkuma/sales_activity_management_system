@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { 
   AlertCircle,
   ArrowDown, 
@@ -14,9 +15,13 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Timer
+  Timer,
+  ExternalLink,
+  Users,
+  ShoppingCart
 } from 'lucide-react'
 import { Pie, PieChart, Tooltip } from "recharts"
+import Link from "next/link"
 
 interface DashboardData {
   kpi: {
@@ -41,6 +46,28 @@ interface DashboardData {
     description: string
     timestamp: string
     status: 'info' | 'warning' | 'error'
+  }[]
+  lowStockProducts: {
+    id: number
+    model: string
+    asusPn: string
+    currentStock: number
+    minStockLevel: number
+    allocatedQuantity: number
+  }[]
+  recentOrders: {
+    id: number
+    poNumber: string
+    customerName: string
+    orderDate: string
+    totalAmount: number
+    status: string
+  }[]
+  topCustomers: {
+    id: number
+    name: string
+    ordersCount: number
+    totalAmount: number
   }[]
   ordersByStatus: {
     status: string
@@ -265,6 +292,107 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* New Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Low Stock Alerts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Low Stock Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data.lowStockProducts.map((product) => (
+                <div key={product.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div>
+                    <p className="font-medium">{product.model}</p>
+                    <p className="text-sm text-muted-foreground">PN: {product.asusPn}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">Stock: <span className="font-medium">{product.currentStock}</span></p>
+                    <p className="text-sm">Allocated: <span className="font-medium">{product.allocatedQuantity}</span></p>
+                    <p className="text-sm text-destructive">Below min level: {product.minStockLevel - product.currentStock}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Customers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Top Customers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data.topCustomers.map((customer) => (
+                <div key={customer.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  <div>
+                    <p className="font-medium">{customer.name}</p>
+                    <p className="text-sm text-muted-foreground">{customer.ordersCount} orders</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">${customer.totalAmount.toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Orders Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>PO Number</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.recentOrders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-medium">{order.poNumber}</TableCell>
+                  <TableCell>{order.customerName}</TableCell>
+                  <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                  <TableCell>${order.totalAmount.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(order.status)}
+                      <span>{getStatusDisplay(order.status)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Link 
+                      href={`/orders/${order.id}`}
+                      className="flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      View
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Recent Activities */}
       <Card>
