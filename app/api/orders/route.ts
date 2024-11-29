@@ -167,18 +167,27 @@ export async function GET(request: Request) {
     return NextResponse.json(transformedOrders)
   } catch (error) {
     console.error('Detailed error:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
+      name: error instanceof Error ? error.name : 'UnknownError',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace available',
     })
-    
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error('Prisma error code:', error.code)
-      console.error('Prisma error meta:', error.meta)
+      return NextResponse.json(
+        { error: `Database error: ${error.message}` },
+        { status: 400 }
+      )
+    }
+
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json(
-      { error: 'Failed to fetch orders', details: error.message },
+      { error: 'An unexpected error occurred' },
       { status: 500 }
     )
   }
@@ -225,17 +234,28 @@ export async function POST(request: Request) {
 
     return NextResponse.json(order)
   } catch (error) {
-    console.error('Order creation error:', error)
-    
+    console.error('Order creation error:', {
+      name: error instanceof Error ? error.name : 'UnknownError',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace available',
+    })
+
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       return NextResponse.json(
-        { error: 'Database error', code: error.code, details: error.meta },
+        { error: `Database error: ${error.message}` },
+        { status: 400 }
+      )
+    }
+
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
         { status: 400 }
       )
     }
 
     return NextResponse.json(
-      { error: 'Failed to create order', details: error.message },
+      { error: 'An unexpected error occurred' },
       { status: 500 }
     )
   }
