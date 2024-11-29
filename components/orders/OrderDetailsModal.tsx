@@ -23,32 +23,35 @@ interface OrderDetails {
   customerName: string
   orderDate: Date
   totalAmount: number
-  status: string
+  tracking_status: string[]
+  allocation_status: string
+  shippingTerm: string
   estimatedShipDate: Date | null
+  actualShipDate: Date | null
+  notes: string | null
   customer: {
     id: number
     name: string
     email: string
     phone: string
     address: string
+    contactPerson: string
+    priceTerm: string
   }
   orderItems: {
     id: number
     quantity: number
     unitPrice: number
+    status: string
+    allocatedQuantity: number
     product: {
       id: number
       model: string
       asusPn: string
-      description: string | null
+      description: string
+      category: string
+      unitPrice: number
     }
-  }[]
-  shipments: {
-    id: number
-    trackingNumber: string
-    status: string
-    estimatedDeliveryDate: Date
-    actualDeliveryDate: Date | null
   }[]
 }
 
@@ -128,6 +131,14 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                     <p className="font-semibold">Address:</p>
                     <p>{order.customer?.address || 'N/A'}</p>
                   </div>
+                  <div>
+                    <p className="font-semibold">Contact Person:</p>
+                    <p>{order.customer?.contactPerson || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Price Term:</p>
+                    <p>{order.customer?.priceTerm || 'N/A'}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -151,6 +162,26 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                     <Label>Estimated Ship Date</Label>
                     <p className="text-lg">{formatDate(order.estimatedShipDate)}</p>
                   </div>
+                  <div>
+                    <Label>Actual Ship Date</Label>
+                    <p className="text-lg">{formatDate(order.actualShipDate)}</p>
+                  </div>
+                  <div>
+                    <Label>Tracking Status</Label>
+                    <p className="text-lg">{order.tracking_status.join(', ')}</p>
+                  </div>
+                  <div>
+                    <Label>Allocation Status</Label>
+                    <p className="text-lg">{order.allocation_status}</p>
+                  </div>
+                  <div>
+                    <Label>Shipping Term</Label>
+                    <p className="text-lg">{order.shippingTerm}</p>
+                  </div>
+                  <div>
+                    <Label>Notes</Label>
+                    <p className="text-lg">{order.notes || 'N/A'}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -170,6 +201,8 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                       <TableHead>Quantity</TableHead>
                       <TableHead>Unit Price</TableHead>
                       <TableHead>Subtotal</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Allocated Quantity</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -181,42 +214,17 @@ export function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalP
                         <TableCell>{item.quantity || 0}</TableCell>
                         <TableCell>{formatCurrency(item.unitPrice || 0)}</TableCell>
                         <TableCell>{formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}</TableCell>
+                        <TableCell>{item.status}</TableCell>
+                        <TableCell>{item.allocatedQuantity}</TableCell>
                       </TableRow>
                     ))}
                     {(!order.orderItems || order.orderItems.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center">No items found</TableCell>
+                        <TableCell colSpan={9} className="text-center">No items found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-
-            {/* Shipping Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Shipping Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="font-semibold">Tracking Number:</p>
-                    <p>{order.shipments?.[0]?.trackingNumber || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold">Status:</p>
-                    <Badge variant="outline">{order.shipments?.[0]?.status || 'N/A'}</Badge>
-                  </div>
-                  <div>
-                    <p className="font-semibold">Estimated Delivery:</p>
-                    <p>{formatDate(order.shipments?.[0]?.estimatedDeliveryDate)}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold">Actual Delivery:</p>
-                    <p>{formatDate(order.shipments?.[0]?.actualDeliveryDate)}</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
