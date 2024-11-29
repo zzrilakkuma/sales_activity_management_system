@@ -94,7 +94,7 @@ const columns: ColumnDef<typeof data[0]>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as string
       return (
-        <Badge variant={status === "In Stock" ? "success" : "destructive"}>
+        <Badge variant={status === "In Stock" ? "default" : "destructive"}>
           {status}
         </Badge>
       )
@@ -246,4 +246,3 @@ export function StockTable() {
     </div>
   )
 }
-
