@@ -381,8 +381,11 @@ export default function NewOrderPage() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
+                          selected={field.value || undefined}
+                          onSelect={(date) => field.onChange(date || null)}
+                          disabled={(date) =>
+                            date < new Date() // 禁用過去的日期
+                          }
                           initialFocus
                         />
                       </PopoverContent>
@@ -440,8 +443,11 @@ export default function NewOrderPage() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
+                          selected={field.value || undefined}
+                          onSelect={(date) => field.onChange(date || null)}
+                          disabled={(date) =>
+                            date < new Date() // 禁用過去的日期
+                          }
                           initialFocus
                         />
                       </PopoverContent>
