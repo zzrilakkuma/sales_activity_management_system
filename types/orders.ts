@@ -30,6 +30,7 @@ export interface OrderListItem {
       model: string
       asusPn: string
       description: string | null
+      category: string
       basePrice: number
     }
   }[]

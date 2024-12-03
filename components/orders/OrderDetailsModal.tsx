@@ -48,9 +48,9 @@ interface OrderDetails {
       id: number
       model: string
       asusPn: string
-      description: string
+      description: string | null
       category: string
-      unitPrice: number
+      basePrice: number
     }
   }[]
 }
